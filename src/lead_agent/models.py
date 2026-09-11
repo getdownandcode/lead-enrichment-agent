@@ -50,19 +50,6 @@ class LLMExtraction(BaseModel):
     target_audience: str | None = None
     leadership: list[LeadershipProfile] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    evidence_notes: list[str] = Field(default_factory=list)
-
-
-class VerificationResult(BaseModel):
-    """The AI verifier's final word on a draft extraction."""
-
-    needs_search: bool = False
-    search_query: str | None = None
-    leadership: list[LeadershipProfile] = Field(default_factory=list)
-    company_overview: str | None = None
-    target_audience: str | None = None
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    notes: list[str] = Field(default_factory=list)
 
 
 class CompanyEnrichmentResult(BaseModel):

@@ -7,3 +7,5 @@ __pycache__/
 output/*
 !output/.gitkeep
 playwright/.cache/
+.agent
+.agents/skills/ponytail

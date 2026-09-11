@@ -56,6 +56,9 @@ class EnrichmentOrchestrator:
         self.use_search = use_search
         self.fetcher = PageFetcher(settings.request_timeout_seconds)
 
+    async def close(self) -> None:
+        await self.fetcher.close()
+
     async def enrich(self, raw_domain: str) -> CompanyEnrichmentResult:
         try:
             domain = normalize_domain(raw_domain)
@@ -106,7 +109,12 @@ class EnrichmentOrchestrator:
             if search_text:
                 extra_extraction, extra_cost = await self._extract(evidence, search_text, warnings)
                 self._absorb(cost, extra_cost)
-                extraction = extra_extraction
+                if extra_extraction.leadership:
+                    extraction.leadership = extra_extraction.leadership
+                if not extraction.company_overview and extra_extraction.company_overview:
+                    extraction.company_overview = extra_extraction.company_overview
+                if not extraction.target_audience and extra_extraction.target_audience:
+                    extraction.target_audience = extra_extraction.target_audience
         cost.search_calls = search_calls
         leadership = self._consistent_sources(extraction.leadership, evidence, search_urls)
         leadership = self._dedupe_people(leadership)
@@ -252,6 +260,8 @@ class EnrichmentOrchestrator:
                 linkedin_url = None
             dropped_linkedin = person.linkedin_url is not None and linkedin_url is None
             source_url = person.source_url if person.source_url in allowed else None
+            if source_url and _is_customer_page(source_url):
+                source_url = None
             if (
                 source_url
                 and "/in/" in urlparse(source_url).path

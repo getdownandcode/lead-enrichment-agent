@@ -57,15 +57,18 @@ def run(
 
     async def execute():
         results = []
-        with Progress(
-            SpinnerColumn(), TextColumn("{task.description}"), console=console
-        ) as progress:
-            task = progress.add_task("Enriching domains", total=len(valid))
-            for domain in valid:
-                progress.update(task, description=f"Enriching {domain}")
-                results.append(await agent.enrich(domain))
-                progress.advance(task)
-        return results
+        try:
+            with Progress(
+                SpinnerColumn(), TextColumn("{task.description}"), console=console
+            ) as progress:
+                task = progress.add_task("Enriching domains", total=len(valid))
+                for domain in valid:
+                    progress.update(task, description=f"Enriching {domain}")
+                    results.append(await agent.enrich(domain))
+                    progress.advance(task)
+            return results
+        finally:
+            await agent.close()
 
     results = asyncio.run(execute())
     write_json(results, output)

@@ -21,7 +21,6 @@ LINK_HINTS = (
     "press",
     "newsroom",
     "careers",
-    "customer",
 )
 
 
@@ -32,16 +31,9 @@ def clean_page(
     title = soup.title.get_text(" ", strip=True) if soup.title else None
     description = soup.select_one('meta[name="description"]')
     meta = description.get("content", "").strip() if description else None
-    for node in soup(
-        ["script", "style", "svg", "noscript", "iframe", "footer", "nav", "header", "aside"]
-    ):
-        node.decompose()
-    root = soup.find("main") or soup.find("article") or soup.body or soup
-    text = re.sub(r"\s+", " ", root.get_text(" ", strip=True))[:max_chars]
-    headings = [item.get_text(" ", strip=True) for item in root.select("h1,h2,h3")][:30]
+    domain = (urlparse(url).hostname or "").removeprefix("www.")
     links: list[str] = []
     linkedin: list[str] = []
-    domain = (urlparse(url).hostname or "").removeprefix("www.")
     for anchor in soup.select("a[href]"):
         href = anchor["href"].strip()
         absolute, _ = urldefrag(urljoin(url, href))
@@ -49,10 +41,21 @@ def clean_page(
             linkedin.append(absolute)
         elif absolute.startswith("http") and same_domain(absolute, domain):
             links.append(absolute)
-    mailtos = [
-        anchor["href"].split(":", 1)[1].split("?", 1)[0]
-        for anchor in soup.select('a[href^="mailto:"]')
-    ]
+
+    mailtos = []
+    for anchor in soup.select('a[href^="mailto:"]'):
+        href = anchor["href"].strip()
+        target = href.split(":", 1)[1].split("?", 1)[0].strip()
+        if "@" in target:
+            mailtos.append(target.lower())
+
+    for node in soup(
+        ["script", "style", "svg", "noscript", "iframe", "footer", "nav", "header", "aside"]
+    ):
+        node.decompose()
+    root = soup.find("main") or soup.find("article") or soup.body or soup
+    text = re.sub(r"\s+", " ", root.get_text(" ", strip=True))[:max_chars]
+    headings = [item.get_text(" ", strip=True) for item in root.select("h1,h2,h3")][:30]
     return PageEvidence(
         url=url,
         title=title,
