@@ -73,10 +73,3 @@ Each record includes `status` (`success`, `partial`, or `failed`), source pages,
 ## Responsible use
 
 This project processes public company pages and public search-result snippets. Respect sites’ terms, robots policies, rate limits, and applicable privacy/marketing laws. Do not use it to scrape protected LinkedIn content or to send unsolicited messages.
-
-## Submission checklist
-
-- [ ] Run the three required domains and copy the fresh `output/output.json` and `output/output.csv` into `sample_output/`.
-- [ ] Record a 2–3 minute walkthrough using [`docs/loom-script.md`](docs/loom-script.md): architecture, a CLI run, and the resulting files.
-- [ ] Send the submission email per [`docs/submission-email.md`](docs/submission-email.md): repo link, Loom link, LinkedIn profile, and eligibility confirmation.
-- [ ] Include the required response: **“Yes”** to the question about comfort spending roughly 40% of working time on manual prospecting, email discovery, and account handling—only if that is your truthful answer.
