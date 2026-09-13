@@ -100,8 +100,11 @@ class EnrichmentOrchestrator:
         search_calls = 0
         search_urls: list[str] = []
         extraction, cost = await self._extract(evidence, "", warnings)
+        needs_search = not extraction.leadership or not any(
+            p.linkedin_url for p in extraction.leadership
+        )
         if (
-            not extraction.leadership
+            needs_search
             and self.use_search
             and self.settings.tavily_api_key
         ):
@@ -110,7 +113,9 @@ class EnrichmentOrchestrator:
                 extra_extraction, extra_cost = await self._extract(evidence, search_text, warnings)
                 self._absorb(cost, extra_cost)
                 if extra_extraction.leadership:
-                    extraction.leadership = extra_extraction.leadership
+                    extraction.leadership = self._dedupe_people(
+                        [*extra_extraction.leadership, *extraction.leadership]
+                    )
                 if not extraction.company_overview and extra_extraction.company_overview:
                     extraction.company_overview = extra_extraction.company_overview
                 if not extraction.target_audience and extra_extraction.target_audience:
@@ -227,14 +232,24 @@ class EnrichmentOrchestrator:
 
     @staticmethod
     def _dedupe_people(people: list[LeadershipProfile]) -> list[LeadershipProfile]:
-        seen: set[tuple[str, str]] = set()
-        result = []
+        by_name: dict[str, LeadershipProfile] = {}
+        unverified: list[LeadershipProfile] = []
         for person in people:
-            key = (person.name.casefold(), (person.linkedin_url or "").casefold())
-            if key not in seen:
-                seen.add(key)
-                result.append(person)
-        return result
+            name_key = person.name.casefold().strip()
+            if not name_key:
+                continue
+            if name_key == "unverified":
+                unverified.append(person)
+                continue
+            if name_key not in by_name:
+                by_name[name_key] = person
+            else:
+                existing = by_name[name_key]
+                if (not existing.linkedin_url and person.linkedin_url) or (
+                    person.confidence > existing.confidence
+                ):
+                    by_name[name_key] = person
+        return list(by_name.values()) + unverified
 
     @staticmethod
     def _consistent_sources(

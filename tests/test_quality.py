@@ -226,3 +226,67 @@ def test_search_runs_when_only_customer_pages_have_linkedin(monkeypatch):
     assert calls == 1
     assert urls == ["https://www.linkedin.com/in/jane-doe"]
     assert "jane-doe" in text
+
+
+class _FakeExtractorWithLeaderWithoutLinkedIn:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def extract(self, evidence, external_evidence=""):
+        if external_evidence:
+            leaders = [
+                LeadershipProfile(
+                    name="Jane Doe",
+                    title="CEO",
+                    linkedin_url="https://www.linkedin.com/in/jane-doe",
+                    source_url="https://www.linkedin.com/in/jane-doe",
+                    confidence=0.9,
+                ),
+                LeadershipProfile(
+                    name="Jayson Noland",
+                    title="CFO",
+                    linkedin_url=None,
+                    source_url=None,
+                    confidence=0.5,
+                ),
+            ]
+        else:
+            leaders = [
+                LeadershipProfile(
+                    name="Jayson Noland",
+                    title="CFO",
+                    linkedin_url=None,
+                    source_url=None,
+                    confidence=0.5,
+                )
+            ]
+        return (
+            LLMExtraction(company_overview="Acme overview.", leadership=leaders, confidence=0.5),
+            CostInfo(
+                prompt_tokens=100,
+                completion_tokens=50,
+                total_tokens=150,
+                estimated_cost_usd=0.00003,
+                estimated=True,
+                llm_calls=1,
+            ),
+        )
+
+
+def test_search_triggers_when_leaders_lack_linkedin_urls(monkeypatch):
+    monkeypatch.setattr("lead_agent.orchestrator.PageFetcher.fetch", _fake_fetch)
+    monkeypatch.setattr("lead_agent.orchestrator.TavilySearch", _FakeTavily)
+    monkeypatch.setattr(
+        "lead_agent.orchestrator.GeminiExtractor", _FakeExtractorWithLeaderWithoutLinkedIn
+    )
+    settings = Settings(gemini_api_key="test", tavily_api_key="test", max_pages=2)
+    agent = EnrichmentOrchestrator(settings, use_search=True)
+    result = asyncio.run(agent.enrich("acme.test"))
+    assert result.cost.llm_calls == 2
+    assert result.cost.search_calls == 1
+    names = {person.name for person in result.leadership}
+    assert "Jane Doe" in names
+    assert "Jayson Noland" in names
+    jane = next(p for p in result.leadership if p.name == "Jane Doe")
+    assert jane.linkedin_url == "https://www.linkedin.com/in/jane-doe"
+

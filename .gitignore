@@ -9,3 +9,7 @@ output/*
 playwright/.cache/
 .agent
 .agents/skills/ponytail
+
+#md files not track
+docs/loom-script.md
+docs/submission-email.md
